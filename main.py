@@ -1,5 +1,5 @@
 import socketio
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 sio = socketio.AsyncServer(cors_allowed_origins='*')
@@ -13,6 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Har bir room uchun foydalanuvchilar ro'yxati
 rooms = {}
 
 @sio.event
@@ -21,17 +22,18 @@ async def connect(sid, environ):
 
 @sio.event
 async def disconnect(sid):
-    for room in rooms.values():
-        if sid in room:
-            room.remove(sid)
+    for room_id, users in rooms.items():
+        if sid in users:
+            print(f"Disconnected {sid} from {room_id}")
+            users.remove(sid)
 
 @sio.event
 async def join_room(sid, room):
     if room not in rooms:
         rooms[room] = []
-    users_in_room = rooms[room]
     rooms[room].append(sid)
-    await sio.emit("all-users", users_in_room, room=sid)
+    print(f"{sid} joined {room}")
+    await sio.emit("all-users", [s for s in rooms[room] if s != sid], room=sid)
 
 @sio.event
 async def send_signal(sid, data):
@@ -46,3 +48,8 @@ async def return_signal(sid, data):
         "signal": data["signal"],
         "id": sid
     }, room=data["callerID"])
+
+# Yangi: mavjud xonalarni va foydalanuvchilarni ko‘rsatish uchun API endpoint
+@app.get("/rooms")
+async def get_rooms():
+    return {"rooms": rooms}
