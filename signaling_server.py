@@ -15,8 +15,12 @@ async def connect(sid, environ):
 
 @sio.event
 async def join_room(sid, room):
+    sio.enter_room(sid, room)
     rooms.setdefault(room, []).append(sid)
-    await sio.emit("all-users", [s for s in rooms[room] if s != sid], room=sid)
+    
+    # Faqat yangi foydalanuvchiga boshqa userlar ro'yxatini yubor
+    await sio.emit("all-users", [s for s in rooms[room] if s != sid], to=sid)
+
 
 @sio.event
 async def send_signal(sid, data):
