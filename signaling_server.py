@@ -4,7 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 sio = socketio.AsyncServer(cors_allowed_origins='*')
 app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 sio_app = socketio.ASGIApp(sio, other_asgi_app=app)
 
 rooms = {}
@@ -17,10 +22,7 @@ async def connect(sid, environ):
 async def join_room(sid, room):
     sio.enter_room(sid, room)
     rooms.setdefault(room, []).append(sid)
-    
-    # Faqat yangi foydalanuvchiga boshqa userlar ro'yxatini yubor
     await sio.emit("all-users", [s for s in rooms[room] if s != sid], to=sid)
-
 
 @sio.event
 async def send_signal(sid, data):
@@ -41,3 +43,4 @@ async def disconnect(sid):
     for room in rooms.values():
         if sid in room:
             room.remove(sid)
+    print(f"❌ Disconnected: {sid}")
